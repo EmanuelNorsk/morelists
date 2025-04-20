@@ -1,6 +1,6 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: morelists
-Version: 0.1.0
+Version: 0.1.2
 Summary: A small and easy list you can add together like a math equation and has a expiration date for items. Mostly useful for games with stats from multiple sources. More lists will come soon.
 Home-page: https://github.com/EmanuelNorsk/enlist
 Author: Emanuel Odén Hesselroth
@@ -13,3 +13,4 @@ Requires-Python: >=3.6
 License-File: LICENSE
 Dynamic: author
 Dynamic: home-page
+Dynamic: license-file
