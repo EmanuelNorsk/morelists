@@ -39,6 +39,11 @@ class GameList():
 
 
     def safeSum(self):
+        """
+        Returns the sum in a safe matter.
+
+        Dont use this, please access the sum by using .sum
+        """
         try:
             return (self.addValue - self.subtractValue) * self.multiplyValue / self.divideValue
         except ZeroDivisionError:
@@ -74,7 +79,7 @@ class GameList():
 
         if not immortal:
             self.expirationList[expires] = self.list[expires]
-        self.flippedList[json.dumps(self.list[expires], sort_keys=True)] = expires
+        self.flippedList[str(self.list[expires])] = expires
 
         if item["type"]   == "add":
             self.addValue += item["value"]
@@ -103,7 +108,7 @@ class GameList():
         self.list[expires] = item
         if not immortal:
             self.expirationList[expires] = self.list[expires]
-        self.flippedList[json.dumps(item, sort_keys=True)] = expires
+        self.flippedList[str(item)] = expires
     
         if item["type"]   == "add":
             self.addValue += item["value"]
@@ -151,6 +156,8 @@ class GameList():
 
         # update() ignore the reeze flag because it's assumed the user is calling it with the purpose of updating it manually
         try:
+            if len(self.expirationList.keys()) == 0:
+                return
             expiration = min(self.expirationList.keys())
             while expiration < time.time():
                 if self.list[expiration]["type"] == "add":
@@ -162,8 +169,9 @@ class GameList():
                 else:
                     self.divideValue -= (self.list[expiration]["value"] - 1)
 
-                del self.flippedList[json.dumps(self.list[expiration], sort_keys=True)]
+                del self.flippedList[str(self.list[expiration])]
                 del self.list[expiration]
+                del self.expirationList[expiration]
 
                 object.__getattribute__(self, "history").append((expiration, self.list, self.expirationList, self.flippedList, self.safeSum()))
                 expiration = min(self.expirationList.keys())
@@ -247,7 +255,7 @@ class GameList():
         pops = [(key, value) for key, value in self.list.items() if value["name"] == name]
         pops.sort(key=lambda a: a[0])
         if pops:
-            stringedList = json.dumps(pops[0][1], sort_keys=True)
+            stringedList = str(pops[0][1])
 
             item = self.list[self.flippedList[stringedList]]
             del self.list[self.flippedList[stringedList]]
@@ -275,7 +283,7 @@ class GameList():
         perf_counter = time.time()
         pops = [value for value in self.list.values() if value["name"] == name]
         if pops:
-            stringedList = json.dumps(pops[0], sort_keys=True)
+            stringedList = str(pops[0])
 
             item = self.list[self.flippedList[stringedList]]
             del self.list[self.flippedList[stringedList]]
@@ -304,7 +312,7 @@ class GameList():
         pops = [value for value in self.list.values() if value["name"] == name]
         if pops:
             for x in range(len(pops)):
-                stringedList = json.dumps(pops[x], sort_keys=True)
+                stringedList = str(pops[x])
 
 
                 item = self.list[self.flippedList[stringedList]]
@@ -331,7 +339,7 @@ class GameList():
         name -- the name you gave the item(s) in the list
         """
         perf_counter = time.time()
-        stringedList = json.dumps(item, sort_keys=True)
+        stringedList = str(item)
         if self.flippedList.get(stringedList, None):
             del self.list[self.flippedList[stringedList]]
             if self.flippedList[stringedList] in self.expirationList: del self.expirationList[self.flippedList[stringedList]]
@@ -359,7 +367,7 @@ class GameList():
         """
         perf_counter = time.time()
         if item in self.list.values():
-            stringedList = json.dumps(item, sort_keys=True)
+            stringedList = str(item)
             del self.list[dict(self.flippedList[stringedList])]
             if dict(self.flippedList[stringedList]) in self.expirationList: del self.expirationList[dict(self.flippedList[stringedList])]
             del self.flippedList[stringedList]
@@ -387,10 +395,14 @@ class GameList():
         if name == "sum":
             if not object.__getattribute__(self, "freeze"):
                 self.update()
-            return (object.__getattribute__(self, "addValue") - 
-                    object.__getattribute__(self, "subtractValue")) * \
-                   object.__getattribute__(self, "multiplyValue") / \
-                   object.__getattribute__(self, "divideValue")
+            try:
+                return (object.__getattribute__(self, "addValue") - 
+                        object.__getattribute__(self, "subtractValue")) * \
+                    object.__getattribute__(self, "multiplyValue") / \
+                    object.__getattribute__(self, "divideValue")
+            except ZeroDivisionError:
+                print("[WARNING]: While retrieving the sum, a ZeroDivisionError showed up. Defaulting to 0")
+                return 0
         elif name == "history":
             if not object.__getattribute__(self, "freeze"):
                 self.update()
