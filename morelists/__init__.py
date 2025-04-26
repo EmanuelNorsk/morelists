@@ -62,7 +62,8 @@ class GameList():
         immortal = True if expires == -1 else False
         perf_counter = time.time()
         expires += perf_counter
-        self.list[expires] = {"name":item.get("name", ""), "type":item.get("type", "add"), "value":item.get("value", 0)}
+        nameExtension = "_" + str(perf_counter)
+        self.list[expires] = {"name":item.get("name", "") + nameExtension, "type":item.get("type", "add"), "value":item.get("value", 0), "nameExtension": nameExtension}
 
 
         if self.list[expires]["type"] not in ["add", "subtract", "multiply", "divide"]:
@@ -73,9 +74,6 @@ class GameList():
             defaultValue = 0 if self.list[expires]["type"] in ["add", "subtract"] else 1
             self.list[expires]["value"] = defaultValue
             print(f"[WARNING]: GameList uses the key 'value' to store the value of each item. You seem to have not given it a value. Defaulted to {defaultValue}.") 
-
-        if self.list[expires]["name"] == "":
-            print(f'[WARNING]: GameList uses the key \'name\' to track items. You seem to have not given it a value. This will make it hard to track and pop at a later time (before its expiration date). Defaulted to "".') 
 
         if not immortal:
             self.expirationList[expires] = self.list[expires]
@@ -105,7 +103,10 @@ class GameList():
         immortal = True if expires == -1 else False
         perf_counter = time.time()
         expires += perf_counter
+        nameExtension = "_" + str(perf_counter)
         self.list[expires] = item
+        self.list[expires]["name"] += nameExtension
+        self.list[expires]["nameExtension"] = nameExtension
         if not immortal:
             self.expirationList[expires] = self.list[expires]
         self.flippedList[str(item)] = expires
@@ -174,6 +175,9 @@ class GameList():
                 del self.expirationList[expiration]
 
                 object.__getattribute__(self, "history").append((expiration, self.list, self.expirationList, self.flippedList, self.safeSum()))
+
+                if len(self.expirationList.keys()) == 0:
+                    return
                 expiration = min(self.expirationList.keys())
         except ValueError as e:
             print(f"[WARNING]: While updating the list, a new error appeared: {e}")
@@ -252,7 +256,7 @@ class GameList():
         name -- the name you gave the item in the list
         """
         perf_counter = time.time()
-        pops = [(key, value) for key, value in self.list.items() if value["name"] == name]
+        pops = [(key, value) for key, value in self.list.items() if value["name"] == name + value["nameExtension"]]
         pops.sort(key=lambda a: a[0])
         if pops:
             stringedList = str(pops[0][1])
@@ -281,7 +285,7 @@ class GameList():
         name -- the name you gave the item in the list
         """
         perf_counter = time.time()
-        pops = [value for value in self.list.values() if value["name"] == name]
+        pops = [value for value in self.list.values() if value["name"] == name + value["nameExtension"]]
         if pops:
             stringedList = str(pops[0])
 
@@ -309,7 +313,7 @@ class GameList():
         name -- the name you gave the item(s) in the list
         """
         perf_counter = time.time()
-        pops = [value for value in self.list.values() if value["name"] == name]
+        pops = [value for value in self.list.values() if value["name"] == name + value["nameExtension"]]
         if pops:
             for x in range(len(pops)):
                 stringedList = str(pops[x])
@@ -331,7 +335,7 @@ class GameList():
 
             object.__getattribute__(self, "history").append((perf_counter, self.list, self.expirationList, self.flippedList, self.safeSum()))
 
-    def remove(self, item):
+    def remove(self, item: dict):
         """
         Removes a specific item from the list (if it exists)
 
@@ -339,49 +343,26 @@ class GameList():
         name -- the name you gave the item(s) in the list
         """
         perf_counter = time.time()
-        stringedList = str(item)
-        if self.flippedList.get(stringedList, None):
-            del self.list[self.flippedList[stringedList]]
-            if self.flippedList[stringedList] in self.expirationList: del self.expirationList[self.flippedList[stringedList]]
-            del self.flippedList[stringedList]
+        if not item.get("name", ""):
+            print("[WARNING]: Removing an item without a name might delete the wrong item! Make sure to give your items a name to remove the risk.")
 
-            if item["type"] == "add":
-                self.addValue -= item["value"]
-            elif item["type"] == "subtract":
-                self.subtractValue -= item["value"]
-            elif item["type"] == "multiply":
-                self.multiplyValue -= (item["value"] - 1)
-            else:
-                self.divideValue -= (item["value"] - 1)
+        for list_key, list_item in self.list.items():
+            if item + list_item["nameExtension"] == list_item["name"]:
+                del self.flippedList[str(list_item)]
+                if self.expirationList.get(list_key, None) == list_item: del self.expirationList[list_key]
+                del self.list[list_key]
 
-            object.__getattribute__(self, "history").append((perf_counter, self.list, self.expirationList, self.flippedList, self.safeSum()))
+                if list_item["type"] == "add":
+                    self.addValue -= list_item["value"]
+                elif list_item["type"] == "subtract":
+                    self.subtractValue -= list_item["value"]
+                elif list_item["type"] == "multiply":
+                    self.multiplyValue -= (list_item["value"] - 1)
+                else:
+                    self.divideValue -= (list_item["value"] - 1)
 
-    def unsafeRemove(self, item):
-        """
-        Removes a specific item from the list (if it exists)
-
-        More unsafe compared to remove(item), so use only if you know what you are doing!
-
-        Keyword arguments:
-        name -- the name you gave the item(s) in the list
-        """
-        perf_counter = time.time()
-        if item in self.list.values():
-            stringedList = str(item)
-            del self.list[dict(self.flippedList[stringedList])]
-            if dict(self.flippedList[stringedList]) in self.expirationList: del self.expirationList[dict(self.flippedList[stringedList])]
-            del self.flippedList[stringedList]
-
-            if item["type"] == "add":
-                self.addValue -= item["value"]
-            elif item["type"] == "subtract":
-                self.subtractValue -= item["value"]
-            elif item["type"] == "multiply":
-                self.multiplyValue -= (item["value"] - 1)
-            else:
-                self.divideValue -= (item["value"] - 1)
-
-            object.__getattribute__(self, "history").append((perf_counter, self.list, self.expirationList, self.flippedList, self.safeSum()))
+                object.__getattribute__(self, "history").append((perf_counter, self.list, self.expirationList, self.flippedList, self.safeSum()))
+                break
 
     def __getattribute__(self, name):
         """
